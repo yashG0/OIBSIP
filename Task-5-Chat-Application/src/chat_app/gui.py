@@ -72,8 +72,15 @@ class ChatApplication(Adw.Application):
         self.css_provider = Gtk.CssProvider()
         self.css_provider.load_from_data(b"""
             .brand-title {
-                font-size: 28px;
+                font-size: 32px;
                 font-weight: 800;
+                color: @accent_color;
+            }
+            .auth-card {
+                background-color: alpha(@card_bg_color, 0.95);
+                border-radius: 20px;
+                padding: 24px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             }
             .chat-bubble {
                 padding: 10px 14px;
@@ -202,42 +209,73 @@ class ChatApplication(Adw.Application):
         scroll.set_vexpand(True)
 
         clamp = Adw.Clamp()
-        clamp.set_maximum_size(460)
-        content = Gtk.Box(
+        clamp.set_maximum_size(420)
+        
+        outer_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=18,
+            spacing=0,
         )
-        content.set_margin_top(36)
-        content.set_margin_bottom(36)
-        content.set_margin_start(24)
-        content.set_margin_end(24)
+        outer_box.set_margin_top(48)
+        outer_box.set_margin_bottom(48)
+        outer_box.set_margin_start(24)
+        outer_box.set_margin_end(24)
 
-        brand = Gtk.Label(label="OIBSIP")
+        card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=16,
+        )
+        card.add_css_class("auth-card")
+        card.set_margin_top(12)
+        card.set_margin_bottom(12)
+        card.set_margin_start(12)
+        card.set_margin_end(12)
+
+        header_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=6,
+        )
+        header_box.set_halign(Gtk.Align.CENTER)
+
+        brand = Gtk.Label(label="💬 OIBSIP Chat")
         brand.add_css_class("brand-title")
-        heading = Gtk.Label(label="Welcome back")
-        heading.add_css_class("title-1")
-        description = Gtk.Label(label="Sign in or create an account to chat.")
+        
+        heading = Gtk.Label(label="Welcome to Secure Chat")
+        heading.add_css_class("title-2")
+        
+        description = Gtk.Label(label="Sign in to your account or create a new one.")
         description.add_css_class("dim-label")
-        description.set_wrap(True)
+        description.set_justify(Gtk.Justification.CENTER)
+
+        header_box.append(brand)
+        header_box.append(heading)
+        header_box.append(description)
 
         self.username, username_list = self.make_username_field()
         self.password, password_list = self.make_password_row("Password")
         self.status = self.make_status_label()
+        self.status.set_justify(Gtk.Justification.CENTER)
 
-        login_button = self.make_button("Sign in", self.on_login, primary=True)
-        register_button = self.make_button("Create account", self.on_register)
+        login_button = self.make_button("Sign In", self.on_login, primary=True)
+        register_button = self.make_button("Create Account", self.on_register)
         self.auth_buttons = [login_button, register_button]
 
-        content.append(brand)
-        content.append(heading)
-        content.append(description)
-        content.append(username_list)
-        content.append(password_list)
-        content.append(login_button)
-        content.append(register_button)
-        content.append(self.status)
+        buttons_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=12,
+        )
+        buttons_box.set_homogeneous(True)
+        buttons_box.append(login_button)
+        buttons_box.append(register_button)
 
-        clamp.set_child(content)
+        card.append(header_box)
+        card.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+        card.append(username_list)
+        card.append(password_list)
+        card.append(buttons_box)
+        card.append(self.status)
+
+        outer_box.append(card)
+        clamp.set_child(outer_box)
         scroll.set_child(clamp)
         page.set_content(scroll)
         self.window.set_content(page)
