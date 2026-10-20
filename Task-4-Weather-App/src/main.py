@@ -1,7 +1,7 @@
-
 import io
 import threading
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk
 from urllib.request import urlopen
 
@@ -35,15 +35,12 @@ class AtmosApp(tk.Tk):
 
         self.city = tk.StringVar()
         self.unit = tk.StringVar(value="C")
-        self.status = tk.StringVar(
-            value="Search for a city to get started."
-        )
+        self.status = tk.StringVar(value="Search for a city to get started.")
 
         self.current = None
         self.forecast = {"hourly": [], "daily": []}
         self.images = []
         self.busy = False
-
         self._configure_fonts()
         self._build_ui()
 
@@ -52,23 +49,43 @@ class AtmosApp(tk.Tk):
 
         style = ttk.Style(self)
         style.theme_use("clam")
-        style.configure(".", font=(self.UI_FONT, 10))
-        style.configure("TButton", font=(self.UI_FONT, 10))
+
+        style.configure(
+            ".",
+            font=(self.UI_FONT, 10),
+        )
+        style.configure(
+            "TButton",
+            font=(self.UI_FONT, 10),
+        )
         style.configure(
             "Atmos.TEntry",
             fieldbackground=CARD,
+            background=CARD,
             foreground=TEXT,
             insertcolor=TEXT,
             bordercolor=BORDER,
+            lightcolor=BORDER,
+            darkcolor=BORDER,
             padding=10,
             font=(self.UI_FONT, 11),
+        )
+        style.map(
+            "Atmos.TEntry",
+            fieldbackground=[
+                ("disabled", CARD),
+                ("readonly", CARD),
+                ("!disabled", CARD),
+            ],
+            foreground=[
+                ("disabled", MUTED),
+                ("!disabled", TEXT),
+            ],
         )
 
     def _build_ui(self):
         outer = tk.Frame(self, bg=BG)
-        outer.pack(
-            fill="both", expand=True, padx=28, pady=24
-        )
+        outer.pack(fill="both", expand=True, padx=28, pady=24)
 
         header = tk.Frame(outer, bg=BG)
         header.pack(fill="x", pady=(0, 20))
@@ -102,13 +119,8 @@ class AtmosApp(tk.Tk):
             textvariable=self.city,
             style="Atmos.TEntry",
         )
-        self.entry.pack(
-            side="left", fill="x", expand=True,
-            padx=(6, 4), pady=6
-        )
-        self.entry.bind(
-            "<Return>", lambda _event: self.search()
-        )
+        self.entry.pack(side="left", fill="x", expand=True, padx=(6, 4), pady=6)
+        self.entry.bind("<Return>", lambda _event: self.search())
 
         self.search_button = tk.Button(
             search,
@@ -125,9 +137,7 @@ class AtmosApp(tk.Tk):
             pady=10,
             cursor="hand2",
         )
-        self.search_button.pack(
-            side="left", padx=(4, 6), pady=6
-        )
+        self.search_button.pack(side="left", padx=(4, 6), pady=6)
 
         self.unit_button = tk.Button(
             search,
@@ -144,9 +154,7 @@ class AtmosApp(tk.Tk):
             pady=10,
             cursor="hand2",
         )
-        self.unit_button.pack(
-            side="left", padx=(0, 6), pady=6
-        )
+        self.unit_button.pack(side="left", padx=(0, 6), pady=6)
 
         # Create the status label once. set_status() only updates it.
         self.status_label = tk.Label(
@@ -157,9 +165,7 @@ class AtmosApp(tk.Tk):
             font=(self.UI_FONT, 10),
             anchor="w",
         )
-        self.status_label.pack(
-            fill="x", pady=(0, 12)
-        )
+        self.status_label.pack(fill="x", pady=(0, 12))
 
         self.current_card = tk.Frame(
             outer,
@@ -175,9 +181,7 @@ class AtmosApp(tk.Tk):
         top.pack(fill="x")
 
         location_area = tk.Frame(top, bg=CARD)
-        location_area.pack(
-            side="left", fill="x", expand=True
-        )
+        location_area.pack(side="left", fill="x", expand=True)
 
         self.location_label = tk.Label(
             location_area,
@@ -195,14 +199,10 @@ class AtmosApp(tk.Tk):
             fg=MUTED,
             font=(self.UI_FONT, 11),
         )
-        self.condition_label.pack(
-            anchor="w", pady=(5, 0)
-        )
+        self.condition_label.pack(anchor="w", pady=(5, 0))
 
         self.icon_label = tk.Label(top, bg=CARD)
-        self.icon_label.pack(
-            side="right", padx=(8, 4)
-        )
+        self.icon_label.pack(side="right", padx=(8, 4))
 
         self.temperature_label = tk.Label(
             self.current_card,
@@ -211,9 +211,7 @@ class AtmosApp(tk.Tk):
             fg=TEXT,
             font=(self.UI_FONT, 42, "bold"),
         )
-        self.temperature_label.pack(
-            anchor="w", pady=(8, 0)
-        )
+        self.temperature_label.pack(anchor="w", pady=(8, 0))
 
         self.feels_label = tk.Label(
             self.current_card,
@@ -222,31 +220,19 @@ class AtmosApp(tk.Tk):
             fg=MUTED,
             font=(self.UI_FONT, 11),
         )
-        self.feels_label.pack(
-            anchor="w", pady=(0, 16)
-        )
+        self.feels_label.pack(anchor="w", pady=(0, 16))
 
-        tk.Frame(
-            self.current_card, bg=BORDER, height=1
-        ).pack(fill="x")
+        tk.Frame(self.current_card, bg=BORDER, height=1).pack(fill="x")
 
         metrics = tk.Frame(self.current_card, bg=CARD)
         metrics.pack(fill="x", pady=(15, 0))
 
-        self.humidity_value = self._metric(
-            metrics, "HUMIDITY", "—"
-        )
-        self.wind_value = self._metric(
-            metrics, "WIND", "—"
-        )
-        self.condition_value = self._metric(
-            metrics, "CONDITION", "—"
-        )
+        self.humidity_value = self._metric(metrics, "HUMIDITY", "—")
+        self.wind_value = self._metric(metrics, "WIND", "—")
+        self.condition_value = self._metric(metrics, "CONDITION", "—")
 
         forecast_header = tk.Frame(outer, bg=BG)
-        forecast_header.pack(
-            fill="x", pady=(24, 10)
-        )
+        forecast_header.pack(fill="x", pady=(24, 10))
 
         tk.Label(
             forecast_header,
@@ -312,18 +298,14 @@ class AtmosApp(tk.Tk):
         city = self.city.get().strip()
 
         if not city:
-            self.set_status(
-                "Enter a city name or ZIP code.", error=True
-            )
+            self.set_status("Enter a city name or ZIP code.", error=True)
             return
 
         if self.busy:
             return
 
-        self.busy = True
-        self.search_button.configure(
-            state="disabled", text="Loading…"
-        )
+        self.busy = True  # type: ignore
+        self.search_button.configure(state="disabled", text="Loading…")
         self.set_status("Fetching weather data…")
 
         threading.Thread(
@@ -337,34 +319,24 @@ class AtmosApp(tk.Tk):
             current = get_current_weather(city)
             forecast = get_forecast(city)
 
-            self.after(
-                0, lambda: self._show_weather(
-                    current, forecast
-                )
-            )
+            self.after(0, lambda: self._show_weather(current, forecast))
         except WeatherAPIError as exc:
             message = str(exc)
-            self.after(
-                0, lambda: self.set_status(
-                    message, error=True
-                )
-            )
+            self.after(0, lambda: self.set_status(message, error=True))
         except Exception:
             self.after(
-                0, lambda: self.set_status(
-                    "Unable to display weather data. "
-                    "Please try again.",
+                0,
+                lambda: self.set_status(
+                    "Unable to display weather data. Please try again.",
                     error=True,
-                )
+                ),
             )
         finally:
             self.after(0, self._finish_loading)
 
     def _finish_loading(self):
-        self.busy = False
-        self.search_button.configure(
-            state="normal", text="Get Weather"
-        )
+        self.busy = False  # type: ignore
+        self.search_button.configure(state="normal", text="Get Weather")
 
     def _show_weather(self, current, forecast):
         self.current = current
@@ -375,24 +347,13 @@ class AtmosApp(tk.Tk):
             location += f", {current['country']}"
 
         self.location_label.configure(text=location)
-        self.condition_label.configure(
-            text=current["description"]
-        )
+        self.condition_label.configure(text=current["description"])
         self.feels_label.configure(
-            text=(
-                "Feels like "
-                + self._temperature(current["feels_like_c"])
-            )
+            text=("Feels like " + self._temperature(current["feels_like_c"]))
         )
-        self.humidity_value.configure(
-            text=f"{current['humidity']}%"
-        )
-        self.wind_value.configure(
-            text=f"{current['wind_speed']} m/s"
-        )
-        self.condition_value.configure(
-            text=current["description"]
-        )
+        self.humidity_value.configure(text=f"{current['humidity']}%")
+        self.wind_value.configure(text=f"{current['wind_speed']} m/s")
+        self.condition_value.configure(text=current["description"])
 
         self._update_temperature()
         self._render_forecasts()
@@ -407,14 +368,8 @@ class AtmosApp(tk.Tk):
 
     def _load_icons(self, current, forecast):
         urls = [current.get("icon_url", "")]
-        urls += [
-            item.get("icon_url", "")
-            for item in forecast["hourly"]
-        ]
-        urls += [
-            item.get("icon_url", "")
-            for item in forecast["daily"]
-        ]
+        urls += [item.get("icon_url", "") for item in forecast["hourly"]]
+        urls += [item.get("icon_url", "") for item in forecast["daily"]]
 
         loaded = []
 
@@ -427,30 +382,22 @@ class AtmosApp(tk.Tk):
                 with urlopen(url, timeout=5) as response:
                     data = response.read()
 
-                image = Image.open(
-                    io.BytesIO(data)
-                ).convert("RGBA")
+                image = Image.open(io.BytesIO(data)).convert("RGBA")
                 image.thumbnail((42, 42))
                 loaded.append(image)
             except Exception:
                 loaded.append(None)
 
         # PhotoImage objects are created later on the main thread.
-        self.after(
-            0, lambda: self._apply_icons(loaded)
-        )
+        self.after(0, lambda: self._apply_icons(loaded))
 
     def _apply_icons(self, images):
         self.images = [
-            ImageTk.PhotoImage(image)
-            if image is not None else None
-            for image in images
+            ImageTk.PhotoImage(image) if image is not None else None for image in images
         ]
 
         if self.images and self.images[0]:
-            self.icon_label.configure(
-                image=self.images[0]
-            )
+            self.icon_label.configure(image=self.images[0])
 
         groups = (
             (1, self.forecast["hourly"]),
@@ -481,33 +428,20 @@ class AtmosApp(tk.Tk):
             return
 
         self.temperature_label.configure(
-            text=self._temperature(
-                self.current["temperature_c"]
-            )
+            text=self._temperature(self.current["temperature_c"])
         )
         self.feels_label.configure(
-            text=(
-                "Feels like "
-                + self._temperature(
-                    self.current["feels_like_c"]
-                )
-            )
+            text=("Feels like " + self._temperature(self.current["feels_like_c"]))
         )
 
     def toggle_unit(self):
-        self.unit.set(
-            "F" if self.unit.get() == "C" else "C"
-        )
-        self.unit_button.configure(
-            text=f"°{self.unit.get()}"
-        )
+        self.unit.set("F" if self.unit.get() == "C" else "C")
+        self.unit_button.configure(text=f"°{self.unit.get()}")
         self._update_temperature()
         self._render_forecasts()
 
     def _render_forecasts(self):
-        for frame in (
-            self.hourly_frame, self.daily_frame
-        ):
+        for frame in (self.hourly_frame, self.daily_frame):
             for widget in frame.winfo_children():
                 widget.destroy()
 
@@ -535,19 +469,14 @@ class AtmosApp(tk.Tk):
             item["_icon_widget"] = card["icon"]
 
         # Restore cached icons after cards are rebuilt.
-        for item in (
-            self.forecast["hourly"]
-            + self.forecast["daily"]
-        ):
+        for item in self.forecast["hourly"] + self.forecast["daily"]:
             photo = item.get("_photo")
             widget = item.get("_icon_widget")
 
             if photo and widget:
                 widget.configure(image=photo)
 
-    def _forecast_card(
-        self, parent, title, temperature, description
-    ):
+    def _forecast_card(self, parent, title, temperature, description):
         card = tk.Frame(
             parent,
             bg=CARD,
@@ -596,9 +525,7 @@ class AtmosApp(tk.Tk):
 
     def set_status(self, message, error=False):
         self.status.set(message)
-        self.status_label.configure(
-            fg=ERROR if error else MUTED
-        )
+        self.status_label.configure(fg=ERROR if error else MUTED)
 
 
 if __name__ == "__main__":
