@@ -1,0 +1,22 @@
+[project]
+name = "task-5-chat-application"
+version = "0.1.0"
+requires-python = ">=3.15"
+dependencies = [
+    "dotenv>=0.9.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "setuptools>=84.2.0",
+]
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
