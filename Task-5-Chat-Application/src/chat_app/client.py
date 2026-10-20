@@ -63,6 +63,22 @@ class ChatClient:
             }
         )
 
+    def create_room(self, room: str):
+        self._send(
+            {
+                "type": "create_room",
+                "room": room.strip(),
+            }
+        )
+
+    def join_room(self, room: str):
+        self._send(
+            {
+                "type": "join_room",
+                "room": room.strip(),
+            }
+        )
+
     def send_message(self, text: str):
         text = text.strip()
         if not text:

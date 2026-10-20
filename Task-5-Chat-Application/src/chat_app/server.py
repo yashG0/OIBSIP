@@ -192,7 +192,98 @@ class ChatServer:
                 for message in messages:
                     action = message.get("type")
 
-                    if action == "chat":
+                    if action == "create_room":
+                        room = str(message.get("room", "")).strip().lower()
+
+                        if not room or len(room) > 64:
+                            self.send(
+                                conn,
+                                {
+                                    "type": "error",
+                                    "text": "Room name must be 1–64 characters.",
+                                },
+                            )
+                            continue
+
+                        if not all(c.isalnum() or c in "-_" for c in room):
+                            self.send(
+                                conn,
+                                {
+                                    "type": "error",
+                                    "text": "Use letters, numbers, hyphens or underscores.",
+                                },
+                            )
+                            continue
+
+                        self.send(
+                            conn,
+                            {
+                                "type": "room_created",
+                                "room": room,
+                                "text": f"Room #{room} is ready to join.",
+                            },
+                        )
+
+                    elif action == "join_room":
+                        room = str(message.get("room", "")).strip().lower()
+
+                        if (
+                            not room
+                            or len(room) > 64
+                            or not all(c.isalnum() or c in "-_" for c in room)
+                        ):
+                            self.send(
+                                conn,
+                                {
+                                    "type": "error",
+                                    "text": "Invalid room name.",
+                                },
+                            )
+                            continue
+
+                        with self.lock:
+                            old_info = self.clients.get(conn)
+                            if not old_info:
+                                continue
+                            old_room = old_info["room"]
+                            self.clients[conn]["room"] = room
+
+                        if old_room != room:
+                            self.broadcast(
+                                old_room,
+                                {
+                                    "type": "system",
+                                    "text": f"{username} left the room.",
+                                    "time": self.timestamp(),
+                                },
+                            )
+
+                        self.send(
+                            conn,
+                            {
+                                "type": "room_joined",
+                                "room": room,
+                                "text": f"Joined #{room}.",
+                            },
+                        )
+                        self.send(
+                            conn,
+                            {
+                                "type": "history",
+                                "room": room,
+                                "messages": self.database.get_messages(room),
+                            },
+                        )
+                        self.broadcast(
+                            room,
+                            {
+                                "type": "system",
+                                "text": f"{username} joined the room.",
+                                "time": self.timestamp(),
+                            },
+                        )
+
+                    elif action == "chat":
                         content = str(message.get("text", "")).strip()
 
                         if not content:

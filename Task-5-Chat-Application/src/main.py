@@ -1,9 +1,4 @@
-from chat_app.server import ChatServer
-
-
-def main() -> None:
-    ChatServer().start()
-
+from chat_app.gui import main
 
 if __name__ == "__main__":
     main()
