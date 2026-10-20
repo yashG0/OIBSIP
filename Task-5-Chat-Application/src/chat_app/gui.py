@@ -1,12 +1,12 @@
 import re
 from datetime import datetime
 
-import gi
+import gi  # type: ignore
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # type: ignore
 
 from chat_app.client import ChatClient
 
