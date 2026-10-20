@@ -1,10 +1,8 @@
-
 import secrets
 import sqlite3
 import string
 from datetime import datetime, timezone
 from pathlib import Path
-
 
 ROOM_ID_ALPHABET = string.ascii_uppercase + string.digits
 
@@ -94,9 +92,7 @@ class ChatDatabase:
 
         with self._connect() as connection:
             for _ in range(10):
-                room_id = "".join(
-                    secrets.choice(ROOM_ID_ALPHABET) for _ in range(8)
-                )
+                room_id = "".join(secrets.choice(ROOM_ID_ALPHABET) for _ in range(8))
                 try:
                     connection.execute(
                         """
