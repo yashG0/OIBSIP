@@ -1,7 +1,6 @@
 import io
 import threading
 import tkinter as tk
-import tkinter.font as tkfont
 from tkinter import ttk
 from urllib.request import urlopen
 
@@ -40,7 +39,7 @@ class AtmosApp(tk.Tk):
         self.current = None
         self.forecast = {"hourly": [], "daily": []}
         self.images = []
-        self.busy = False
+        self.busy = False  # type:ignore
         self._configure_fonts()
         self._build_ui()
 
