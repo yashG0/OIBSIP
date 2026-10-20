@@ -1,0 +1,17 @@
+[project]
+name = "task-4-weather-app"
+version = "0.1.0"
+requires-python = ">=3.15"
+dependencies = [
+    "python-dotenv>=1.2.4",
+    "requests>=2.34.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
