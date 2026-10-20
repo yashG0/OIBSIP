@@ -1,5 +1,6 @@
 import pyttsx3
 import speech_recognition as sr
+from dotenv import load_dotenv
 
 from assistant.commands import handle_command
 
@@ -73,6 +74,7 @@ def run_voice_mode(speaker) -> None:
 
 
 def main() -> None:
+    load_dotenv()
     try:
         speaker = pyttsx3.init()
     except Exception as error:
