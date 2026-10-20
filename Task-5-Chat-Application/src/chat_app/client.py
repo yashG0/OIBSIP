@@ -17,39 +17,73 @@ class ChatClient:
         self.sock = None
         self.running = False
         self.thread = None
+        self.send_lock = threading.Lock()
 
     def connect(self):
-        self.sock = socket.create_connection((self.host, self.port), timeout=5)
+        if self.running:
+            raise RuntimeError("Already connected")
+
+        self.sock = socket.create_connection(
+            (self.host, self.port),
+            timeout=5,
+        )
         self.sock.settimeout(None)
         self.running = True
 
-        self.thread = threading.Thread(target=self._receive_loop, daemon=True)
+        self.thread = threading.Thread(
+            target=self._receive_loop,
+            daemon=True,
+        )
         self.thread.start()
 
-    def send_message(self, text: str):
-        if not self.sock or not self.running:
+    def _send(self, message: dict):
+        sock = self.sock
+        if not sock or not self.running:
             raise ConnectionError("Not connected to the chat server")
 
+        payload = encode_message(message)
+        with self.send_lock:
+            sock.sendall(payload)
+
+    def register(self, username: str, password: str):
+        self._send(
+            {
+                "type": "register",
+                "username": username.strip(),
+                "password": password,
+            }
+        )
+
+    def login(self, username: str, password: str):
+        self._send(
+            {
+                "type": "login",
+                "username": username.strip(),
+                "password": password,
+            }
+        )
+
+    def send_message(self, text: str):
         text = text.strip()
         if not text:
             return
         if len(text) > 2000:
             raise ValueError("Message must be at most 2000 characters")
 
-        self.sock.sendall(
-            encode_message(
-                {
-                    "type": "chat",
-                    "text": text,
-                }
-            )
+        self._send(
+            {
+                "type": "chat",
+                "text": text,
+            }
         )
 
     def _receive_loop(self):
+        sock = self.sock
         buffer = b""
+
         try:
-            while self.running and self.sock:
-                messages, buffer = receive_messages(self.sock, buffer)
+            while self.running and sock:
+                messages, buffer = receive_messages(sock, buffer)
                 for message in messages:
                     self.on_message(message)
         except (ConnectionError, OSError, ValueError) as exc:
@@ -62,17 +96,19 @@ class ChatClient:
                 )
         finally:
             self.running = False
-            if self.sock:
+            if sock:
                 try:
-                    self.sock.close()
+                    sock.close()
                 except OSError:
                     pass
+            if self.sock is sock:
                 self.sock = None
 
     def disconnect(self):
         self.running = False
         sock = self.sock
         self.sock = None
+
         if sock:
             try:
                 sock.shutdown(socket.SHUT_RDWR)
