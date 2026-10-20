@@ -4,7 +4,6 @@ import tkinter as tk
 from tkinter import ttk
 from urllib.request import urlopen
 
-import requests
 from PIL import Image, ImageTk
 
 from weather_app.api import (
@@ -13,26 +12,30 @@ from weather_app.api import (
     get_forecast,
 )
 
-BG = "#0b1220"
-PANEL = "#151f32"
-TEXT = "#f1f5f9"
-MUTED = "#9baac0"
-ACCENT = "#7dd3fc"
+BG = "#242424"
+CARD = "#303030"
+BORDER = "#414141"
+TEXT = "#F6F5F4"
+MUTED = "#C0BFBC"
+ACCENT = "#78AEED"
+ERROR = "#F28B82"
 
 
-class WeatherApp(tk.Tk):
+class AtmosApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Atmos — Weather")
-        self.geometry("900x720")
-        self.minsize(700, 600)
+        self.geometry("900x760")
+        self.minsize(650, 650)
         self.configure(bg=BG)
 
-        self.unit = tk.StringVar(value="C")
         self.city = tk.StringVar()
-        self.status = tk.StringVar(value="Search for a city to see its weather.")
+        self.unit = tk.StringVar(value="C")
+        self.status = tk.StringVar(value="Search for a city to get started.")
         self.current = None
-        self.icon_refs = []
+        self.forecast = {"hourly": [], "daily": []}
+        self.images = []
+        self.busy = False
 
         self._build_ui()
 
@@ -40,301 +43,419 @@ class WeatherApp(tk.Tk):
         style = ttk.Style(self)
         style.theme_use("clam")
         style.configure(
-            "Weather.TCombobox",
-            fieldbackground=PANEL,
-            background=PANEL,
+            "Atmos.TEntry",
+            fieldbackground=CARD,
             foreground=TEXT,
+            insertcolor=TEXT,
+            bordercolor=BORDER,
+            padding=10,
         )
 
-        header = tk.Frame(self, bg=BG)
-        header.pack(fill="x", padx=28, pady=(24, 14))
+        outer = tk.Frame(self, bg=BG)
+        outer.pack(fill="both", expand=True, padx=28, pady=24)
 
-        tk.Label(
-            header, text="ATMOS", bg=BG, fg=ACCENT, font=("Inter", 12, "bold")
-        ).pack(anchor="w")
+        header = tk.Frame(outer, bg=BG)
+        header.pack(fill="x", pady=(0, 20))
 
         tk.Label(
             header,
-            text="Weather, at a glance.",
+            text="Atmos",
             bg=BG,
             fg=TEXT,
-            font=("Inter", 25, "bold"),
-        ).pack(anchor="w", pady=(5, 0))
+            font=("Cantarell", 25, "bold"),
+        ).pack(side="left")
 
-        search = tk.Frame(self, bg=PANEL, padx=12, pady=12)
-        search.pack(fill="x", padx=28, pady=8)
+        tk.Label(
+            header,
+            text="WEATHER OVERVIEW",
+            bg=BG,
+            fg=MUTED,
+            font=("Cantarell", 9, "bold"),
+        ).pack(side="right", pady=(12, 0))
 
-        self.city_entry = tk.Entry(
+        search = tk.Frame(
+            outer,
+            bg=CARD,
+            highlightbackground=BORDER,
+            highlightthickness=1,
+        )
+        search.pack(fill="x", pady=(0, 12))
+
+        self.entry = ttk.Entry(
             search,
             textvariable=self.city,
-            bg=PANEL,
-            fg=TEXT,
-            insertbackground=TEXT,
-            relief="flat",
-            font=("Inter", 12),
-            highlightthickness=0,
+            style="Atmos.TEntry",
+            font=("Cantarell", 12),
         )
-        self.city_entry.pack(side="left", fill="x", expand=True, padx=8, ipady=8)
-        self.city_entry.insert(0, "")
+        self.entry.pack(side="left", fill="x", expand=True, padx=(6, 4), pady=6)
+        self.entry.bind("<Return>", lambda _event: self.search())
 
         self.search_button = tk.Button(
             search,
-            text="Get weather",
-            command=self.search_weather,
+            text="Get Weather",
+            command=self.search,
             bg=ACCENT,
-            fg=BG,
-            activebackground="#bae6fd",
+            fg="#181818",
+            activebackground="#A8C9F0",
+            activeforeground="#181818",
             relief="flat",
-            font=("Inter", 10, "bold"),
+            bd=0,
+            font=("Cantarell", 10, "bold"),
             padx=16,
-            pady=9,
+            pady=10,
             cursor="hand2",
         )
-        self.search_button.pack(side="left", padx=5)
+        self.search_button.pack(side="left", padx=(4, 6), pady=6)
 
         self.unit_button = tk.Button(
             search,
-            text="°C / °F",
+            text="°C",
             command=self.toggle_unit,
-            bg="#26354c",
+            bg="#454545",
             fg=TEXT,
+            activebackground="#555555",
             relief="flat",
-            padx=12,
-            pady=9,
+            bd=0,
+            font=("Cantarell", 10, "bold"),
+            padx=14,
+            pady=10,
             cursor="hand2",
         )
-        self.unit_button.pack(side="left", padx=5)
+        self.unit_button.pack(side="left", padx=(0, 6), pady=6)
 
-        self.error_label = tk.Label(
-            self,
+        tk.Label(
+            outer,
             textvariable=self.status,
             bg=BG,
             fg=MUTED,
-            font=("Inter", 10),
+            font=("Cantarell", 10),
             anchor="w",
-        )
-        self.error_label.pack(fill="x", padx=32, pady=(2, 10))
+        ).pack(fill="x", pady=(0, 12))
 
-        self.current_panel = tk.Frame(self, bg=PANEL, padx=24, pady=20)
-        self.current_panel.pack(fill="x", padx=28, pady=5)
+        self.current_card = tk.Frame(
+            outer,
+            bg=CARD,
+            highlightbackground=BORDER,
+            highlightthickness=1,
+            padx=22,
+            pady=20,
+        )
+        self.current_card.pack(fill="x")
+
+        top = tk.Frame(self.current_card, bg=CARD)
+        top.pack(fill="x")
+
+        location_area = tk.Frame(top, bg=CARD)
+        location_area.pack(side="left", fill="x", expand=True)
 
         self.location_label = tk.Label(
-            self.current_panel,
+            location_area,
             text="Your location",
-            bg=PANEL,
-            fg=MUTED,
-            font=("Inter", 12),
+            bg=CARD,
+            fg=TEXT,
+            font=("Cantarell", 19, "bold"),
         )
         self.location_label.pack(anchor="w")
 
-        self.temperature_label = tk.Label(
-            self.current_panel,
-            text="--°",
-            bg=PANEL,
-            fg=TEXT,
-            font=("Inter", 48, "bold"),
-        )
-        self.temperature_label.pack(anchor="w")
-
         self.condition_label = tk.Label(
-            self.current_panel,
-            text="Search a city to begin",
-            bg=PANEL,
-            fg=ACCENT,
-            font=("Inter", 14),
-        )
-        self.condition_label.pack(anchor="w")
-
-        self.details_label = tk.Label(
-            self.current_panel,
-            text="Humidity --  ·  Wind --",
-            bg=PANEL,
+            location_area,
+            text="Current conditions will appear here",
+            bg=CARD,
             fg=MUTED,
-            font=("Inter", 10),
+            font=("Cantarell", 11),
         )
-        self.details_label.pack(anchor="w", pady=(12, 0))
+        self.condition_label.pack(anchor="w", pady=(5, 0))
 
-        forecast_heading = tk.Frame(self, bg=BG)
-        forecast_heading.pack(fill="x", padx=28, pady=(18, 8))
+        self.icon_label = tk.Label(top, bg=CARD)
+        self.icon_label.pack(side="right", padx=(8, 4))
+
+        self.temperature_label = tk.Label(
+            self.current_card,
+            text="--°",
+            bg=CARD,
+            fg=TEXT,
+            font=("Cantarell", 48, "bold"),
+        )
+        self.temperature_label.pack(anchor="w", pady=(8, 0))
+
+        self.feels_label = tk.Label(
+            self.current_card,
+            text="Feels like —",
+            bg=CARD,
+            fg=MUTED,
+            font=("Cantarell", 11),
+        )
+        self.feels_label.pack(anchor="w", pady=(0, 16))
+
+        tk.Frame(self.current_card, bg=BORDER, height=1).pack(fill="x")
+
+        metrics = tk.Frame(self.current_card, bg=CARD)
+        metrics.pack(fill="x", pady=(15, 0))
+
+        self.humidity_value = self._metric(metrics, "HUMIDITY", "—")
+        self.wind_value = self._metric(metrics, "WIND", "—")
+        self.condition_value = self._metric(metrics, "CONDITION", "—")
+
+        forecast_header = tk.Frame(outer, bg=BG)
+        forecast_header.pack(fill="x", pady=(24, 10))
+
         tk.Label(
-            forecast_heading,
-            text="UPCOMING",
+            forecast_header,
+            text="Forecast",
             bg=BG,
             fg=TEXT,
-            font=("Inter", 13, "bold"),
+            font=("Cantarell", 17, "bold"),
         ).pack(side="left")
+
         tk.Label(
-            forecast_heading,
+            forecast_header,
             text="3-hour intervals · 5-day outlook",
             bg=BG,
             fg=MUTED,
-            font=("Inter", 9),
-        ).pack(side="right")
+            font=("Cantarell", 9),
+        ).pack(side="right", pady=(5, 0))
 
-        self.forecast_panel = tk.Frame(self, bg=BG)
-        self.forecast_panel.pack(fill="both", expand=True, padx=28, pady=(0, 18))
+        tk.Label(
+            outer,
+            text="UP NEXT",
+            bg=BG,
+            fg=MUTED,
+            font=("Cantarell", 9, "bold"),
+        ).pack(anchor="w", pady=(0, 8))
 
-        self.hourly_frame = tk.Frame(self.forecast_panel, bg=BG)
-        self.hourly_frame.pack(fill="x", pady=(0, 12))
-        self.daily_frame = tk.Frame(self.forecast_panel, bg=BG)
-        self.daily_frame.pack(fill="both", expand=True)
+        self.hourly_frame = tk.Frame(outer, bg=BG)
+        self.hourly_frame.pack(fill="x")
 
-        self.city_entry.bind("<Return>", lambda _event: self.search_weather())
+        tk.Label(
+            outer,
+            text="NEXT FIVE DAYS",
+            bg=BG,
+            fg=MUTED,
+            font=("Cantarell", 9, "bold"),
+        ).pack(anchor="w", pady=(18, 8))
 
-    def search_weather(self):
+        self.daily_frame = tk.Frame(outer, bg=BG)
+        self.daily_frame.pack(fill="x")
+
+    def _metric(self, parent, label, initial):
+        frame = tk.Frame(parent, bg=CARD)
+        frame.pack(side="left", fill="x", expand=True)
+
+        tk.Label(
+            frame,
+            text=label,
+            bg=CARD,
+            fg=MUTED,
+            font=("Cantarell", 9, "bold"),
+        ).pack(anchor="w")
+
+        value = tk.Label(
+            frame,
+            text=initial,
+            bg=CARD,
+            fg=TEXT,
+            font=("Cantarell", 13, "bold"),
+        )
+        value.pack(anchor="w", pady=(5, 0))
+        return value
+
+    def search(self):
         city = self.city.get().strip()
         if not city:
-            self.show_error("Enter a city name or ZIP code.")
+            self.set_status("Enter a city name or ZIP code.", error=True)
+            return
+        if self.busy:
             return
 
+        self.busy = True
         self.search_button.configure(state="disabled", text="Loading…")
-        self.status.set("Fetching weather data…")
-        self.error_label.configure(fg=MUTED)
+        self.set_status("Fetching weather data…")
 
-        threading.Thread(target=self.fetch_weather, args=(city,), daemon=True).start()
+        threading.Thread(target=self._fetch, args=(city,), daemon=True).start()
 
-    def fetch_weather(self, city):
+    def _fetch(self, city):
         try:
             current = get_current_weather(city)
             forecast = get_forecast(city)
-            self.after(0, lambda: self.show_weather(current, forecast))
+            self.after(0, lambda: self._show_weather(current, forecast))
         except WeatherAPIError as exc:
-            self.after(0, lambda message=str(exc): self.show_error(message))
-        except KeyError, TypeError, ValueError:
+            message = str(exc)
+            self.after(0, lambda: self.set_status(message, error=True))
+        except Exception:
             self.after(
                 0,
-                lambda: self.show_error(
-                    "The weather service returned unexpected data."
+                lambda: self.set_status(
+                    "Unable to display weather data. Please try again.",
+                    error=True,
                 ),
             )
         finally:
-            self.after(
-                0,
-                lambda: self.search_button.configure(
-                    state="normal", text="Get weather"
-                ),
-            )
+            self.after(0, self._finish_loading)
 
-    def show_weather(self, current, forecast):
+    def _finish_loading(self):
+        self.busy = False
+        self.search_button.configure(state="normal", text="Get Weather")
+
+    def _show_weather(self, current, forecast):
         self.current = current
-        self.location_label.configure(
-            text=f"{current['city']}, {current['country']}".strip(", ")
-        )
-        self.condition_label.configure(text=current["description"])
-        self.details_label.configure(
-            text=(
-                f"Feels like {self.temperature(current['feels_like_c'])}"
-                f"    ·    Humidity {current['humidity']}%"
-                f"    ·    Wind {current['wind_speed']} m/s"
-            )
-        )
-        self.update_temperature()
-        self.status.set("Weather updated successfully.")
-        self.error_label.configure(fg=ACCENT)
-        self.render_forecasts(forecast)
+        self.forecast = forecast
 
-        # Load the current-condition icon without blocking the main window.
+        location = current["city"]
+        if current.get("country"):
+            location += f", {current['country']}"
+
+        self.location_label.configure(text=location)
+        self.condition_label.configure(text=current["description"])
+        self.feels_label.configure(
+            text=f"Feels like {self._temperature(current['feels_like_c'])}"
+        )
+        self.humidity_value.configure(text=f"{current['humidity']}%")
+        self.wind_value.configure(text=f"{current['wind_speed']} m/s")
+        self.condition_value.configure(text=current["description"])
+        self._update_temperature()
+        self._render_forecasts()
+        self.set_status("Weather updated.", error=False)
+
         threading.Thread(
-            target=self.load_icon,
-            args=(current["icon_url"],),
+            target=self._load_icons,
+            args=(current, forecast),
             daemon=True,
         ).start()
 
-    def load_icon(self, url):
-        try:
-            with urlopen(url, timeout=5) as response:
-                image_data = response.read()
-            image = Image.open(io.BytesIO(image_data)).resize((70, 70))
-            photo = ImageTk.PhotoImage(image)
-            self.after(0, lambda: self.set_icon(photo))
-        except OSError, requests.RequestException:
-            pass
+    def _load_icons(self, current, forecast):
+        urls = [current.get("icon_url", "")]
+        urls += [item.get("icon_url", "") for item in forecast["hourly"]]
+        urls += [item.get("icon_url", "") for item in forecast["daily"]]
 
-    def set_icon(self, photo):
-        self.icon_refs = [photo]
-        if hasattr(self, "icon_label"):
-            self.icon_label.destroy()
-        self.icon_label = tk.Label(self.current_panel, image=photo, bg=PANEL)
-        self.icon_label.place(relx=0.93, rely=0.12, anchor="center")
+        loaded = []
+        for url in urls:
+            try:
+                with urlopen(url, timeout=5) as response:
+                    data = response.read()
+                image = Image.open(io.BytesIO(data)).convert("RGBA")
+                image.thumbnail((42, 42))
+                loaded.append(ImageTk.PhotoImage(image))
+            except Exception:
+                loaded.append(None)
 
-    def temperature(self, celsius):
+        self.after(0, lambda: self._apply_icons(loaded))
+
+    def _apply_icons(self, images):
+        # Keep references alive so Tkinter doesn't discard the images.
+        self.images = images
+        if images and images[0]:
+            self.icon_label.configure(image=images[0])
+
+        for frame, start, items in (
+            (self.hourly_frame, 1, self.forecast["hourly"]),
+            (
+                self.daily_frame,
+                1 + len(self.forecast["hourly"]),
+                self.forecast["daily"],
+            ),
+        ):
+            for index, item in enumerate(items):
+                image = images[start + index]
+                if image:
+                    item["_photo"] = image
+                    item["_icon_widget"].configure(image=image)
+
+    def _temperature(self, celsius):
         if self.unit.get() == "F":
             return f"{celsius * 9 / 5 + 32:.1f}°F"
         return f"{celsius:.1f}°C"
 
-    def update_temperature(self):
+    def _update_temperature(self):
         if self.current:
             self.temperature_label.configure(
-                text=self.temperature(self.current["temperature_c"])
+                text=self._temperature(self.current["temperature_c"])
+            )
+            self.feels_label.configure(
+                text=f"Feels like {self._temperature(self.current['feels_like_c'])}"
             )
 
     def toggle_unit(self):
         self.unit.set("F" if self.unit.get() == "C" else "C")
-        self.update_temperature()
-        if self.current:
-            self.render_forecasts(self.last_forecast)
+        self.unit_button.configure(text=f"°{self.unit.get()}")
+        self._update_temperature()
+        self._render_forecasts()
 
-    def render_forecasts(self, forecast):
-        self.last_forecast = forecast
-
+    def _render_forecasts(self):
         for frame in (self.hourly_frame, self.daily_frame):
             for widget in frame.winfo_children():
                 widget.destroy()
 
-        for index, item in enumerate(forecast["hourly"]):
-            self.forecast_card(
+        for item in self.forecast["hourly"]:
+            time_text = item["time"]
+            card = self._forecast_card(
                 self.hourly_frame,
-                item["time"][5:16],
-                self.temperature(item["temperature_c"]),
+                time_text[-8:-3],
+                self._temperature(item["temperature_c"]),
                 item["description"],
-                index,
             )
+            item["_icon_widget"] = card["icon"]
 
-        for index, item in enumerate(forecast["daily"]):
-            self.forecast_card(
+        for item in self.forecast["daily"]:
+            day = item["date"]
+            card = self._forecast_card(
                 self.daily_frame,
-                item["date"],
-                f"{self.temperature(item['temperature_min_c'])} / "
-                f"{self.temperature(item['temperature_max_c'])}",
+                day,
+                f"{self._temperature(item['temperature_min_c'])} / "
+                f"{self._temperature(item['temperature_max_c'])}",
                 item["description"],
-                index,
             )
+            item["_icon_widget"] = card["icon"]
 
-    def forecast_card(self, parent, title, temperature, description, index):
-        card = tk.Frame(parent, bg=PANEL, padx=12, pady=12)
-        card.pack(
-            side="left", fill="both", expand=True, padx=(0 if index == 0 else 7, 0)
+    def _forecast_card(self, parent, title, temperature, description):
+        card = tk.Frame(
+            parent,
+            bg=CARD,
+            highlightbackground=BORDER,
+            highlightthickness=1,
+            padx=12,
+            pady=12,
         )
+        card.pack(side="left", fill="both", expand=True, padx=(0, 8))
 
         tk.Label(
             card,
             text=title,
-            bg=PANEL,
+            bg=CARD,
             fg=MUTED,
-            font=("Inter", 9),
+            font=("Cantarell", 9),
         ).pack(anchor="w")
+
+        icon = tk.Label(card, bg=CARD, width=4, height=2)
+        icon.pack(anchor="w", pady=(5, 2))
+
         tk.Label(
             card,
             text=temperature,
-            bg=PANEL,
+            bg=CARD,
             fg=TEXT,
-            font=("Inter", 13, "bold"),
-        ).pack(anchor="w", pady=(7, 4))
+            font=("Cantarell", 12, "bold"),
+        ).pack(anchor="w")
+
         tk.Label(
             card,
             text=description,
-            bg=PANEL,
-            fg=ACCENT,
-            font=("Inter", 9),
-            wraplength=130,
+            bg=CARD,
+            fg=MUTED,
+            font=("Cantarell", 9),
+            wraplength=115,
             justify="left",
-        ).pack(anchor="w")
+        ).pack(anchor="w", pady=(4, 0))
 
-    def show_error(self, message):
+        return {"icon": icon}
+
+    def set_status(self, message, error=False):
         self.status.set(message)
-        self.error_label.configure(fg="#fca5a5")
+        # The status label is the first direct label after the search area.
+        # Set the color via the variable's associated widget below.
+        if hasattr(self, "status_label"):
+            self.status_label.configure(fg=ERROR if error else MUTED)
 
 
 if __name__ == "__main__":
-    app = WeatherApp()
+    app = AtmosApp()
     app.mainloop()
