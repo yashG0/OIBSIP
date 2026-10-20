@@ -1,0 +1,16 @@
+{
+  "commands": {
+    "open youtube": {
+      "response": "Opening YouTube.",
+      "url": "https://www.youtube.com"
+    },
+    "open github": {
+      "response": "Opening GitHub.",
+      "url": "https://github.com"
+    },
+    "open python": {
+      "response": "Opening Python's website.",
+      "url": "https://www.python.org"
+    }
+  }
+}
