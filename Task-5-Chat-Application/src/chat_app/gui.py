@@ -338,22 +338,32 @@ class ChatApplication(Adw.Application):
 
         room_bar = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=8,
+            spacing=10,
         )
-        self.room_label = Gtk.Label(label="Room: #general")
+        room_bar.add_css_class("card")
+        room_bar.set_margin_bottom(6)
+        
+        # Room selector dropdown/combo
+        self.room_combo = Gtk.DropDown.new_from_strings(["#general (General Room)", "Enter Room ID..."])
+        self.room_combo.set_tooltip_text("Select room or enter custom ID")
+        self.room_combo.connect("notify::selected", self.on_room_selection_changed)
+        
         self.room_entry = Gtk.Entry()
-        self.room_entry.set_placeholder_text("Room name")
+        self.room_entry.set_placeholder_text("Enter Room ID (e.g., ABC123XYZ)")
         self.room_entry.set_hexpand(True)
+        self.room_entry.set_visible(False) # initially hidden, shown if "Enter Room ID..." selected
 
-        create_button = Gtk.Button(label="Create")
-        create_button.connect("clicked", self.create_room)
-        join_button = Gtk.Button(label="Join")
-        join_button.connect("clicked", self.join_room)
+        go_room_button = Gtk.Button(label="Join Room")
+        go_room_button.add_css_class("suggested-action")
+        go_room_button.connect("clicked", self.on_switch_room)
 
-        room_bar.append(self.room_label)
+        create_room_button = Gtk.Button(label="New Room")
+        create_room_button.connect("clicked", self.on_create_room_dialog)
+
+        room_bar.append(self.room_combo)
         room_bar.append(self.room_entry)
-        room_bar.append(create_button)
-        room_bar.append(join_button)
+        room_bar.append(go_room_button)
+        room_bar.append(create_room_button)
 
         self.chat_scroll = Gtk.ScrolledWindow()
         self.chat_scroll.set_vexpand(True)
@@ -403,23 +413,65 @@ class ChatApplication(Adw.Application):
         self.window.set_default_widget(send_button)
         self.window.present()
 
-    def create_room(self, *_):
-        room = self.room_entry.get_text().strip()
-        if not room or not self.client or not self.client.running:
-            return
-        try:
-            self.client.create_room(room)
-        except (OSError, ConnectionError, ValueError) as exc:
-            self.add_system_message(str(exc))
+    def on_room_selection_changed(self, dropdown, _param):
+        selected = dropdown.get_selected()
+        if selected == 1:
+            self.room_entry.set_visible(True)
+            self.room_entry.grab_focus()
+        else:
+            self.room_entry.set_visible(False)
 
-    def join_room(self, *_):
-        room = self.room_entry.get_text().strip()
+    def on_switch_room(self, *_):
+        selected = self.room_combo.get_selected()
+        if selected == 0:
+            room = "general"
+        else:
+            room = self.room_entry.get_text().strip()
+        
         if not room or not self.client or not self.client.running:
             return
         try:
             self.client.join_room(room)
+            self.current_room = room
+            self.message_entry.set_placeholder_text(f"Message #{room}…")
+            self.add_system_message(f"Joined room: #{room}")
         except (OSError, ConnectionError, ValueError) as exc:
             self.add_system_message(str(exc))
+
+    def on_create_room_dialog(self, *_):
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Create a New Chat Room\nEnter a name for the new chat room:",
+        )
+        
+        entry = Gtk.Entry()
+        entry.set_placeholder_text("Room name (e.g. developers)")
+        entry.set_margin_start(12)
+        entry.set_margin_end(12)
+        entry.set_margin_top(6)
+        entry.set_margin_bottom(6)
+        
+        content_area = dialog.get_content_area()
+        content_area.append(entry)
+        
+        def on_response(dlg, response_id):
+            if response_id == Gtk.ResponseType.OK:
+                room_name = entry.get_text().strip()
+                if room_name and self.client and self.client.running:
+                    try:
+                        self.client.create_room(room_name)
+                        self.add_system_message(f"Created & joined room: #{room_name}")
+                        self.current_room = room_name
+                        self.message_entry.set_placeholder_text(f"Message #{room_name}…")
+                    except (OSError, ConnectionError, ValueError) as exc:
+                        self.add_system_message(str(exc))
+            dlg.destroy()
+
+        dialog.connect("response", on_response)
+        dialog.present()
 
     def receive_message(self, message):
         GLib.idle_add(self.handle_message, message)
