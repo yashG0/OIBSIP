@@ -52,7 +52,7 @@ def run_voice_mode(speaker) -> None:
                     timeout=5,
                     phrase_time_limit=8,
                 )
-                command = recognizer.recognize_google(audio)
+                command = recognizer.recognize_google(audio)  # type:ignore
                 print(f"You: {command}")
 
                 response, should_continue = handle_command(command)
@@ -88,7 +88,7 @@ def main() -> None:
 
         if choice == "v":
             try:
-                run_voice_mode()
+                run_voice_mode()  # type:ignore
             except (OSError, AttributeError) as error:
                 print(f"Microphone unavailable: {error}")
                 run_text_mode(speaker)
