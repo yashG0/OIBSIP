@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from assistant.reminders import schedule_reminder
+from assistant.weather import get_weather
 
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "commands.json"
 
@@ -81,7 +82,12 @@ def handle_command(command: str) -> tuple[str, bool]:
             lambda text: print(f"\nAssistant: {text}"),
         )
         return f"Reminder set for {message} in {duration}.", True
+    if normalized == "weather":
+        return "Try: weather in Nagpur.", True
 
+    if normalized.startswith("weather in "):
+        city = command.strip()[len("weather in ") :].strip()
+        return get_weather(city), True
     custom_commands = load_custom_commands()
     custom_command = custom_commands.get(normalized)
 
