@@ -45,6 +45,30 @@ class ChatServer:
             except OSError:
                 self.remove_client(conn)
 
+    def room_directory(self) -> list[dict]:
+        rooms = self.database.list_public_rooms()
+        with self.lock:
+            counts: dict[str, int] = {}
+            for info in self.clients.values():
+                room_id = info.get("room", "")
+                if room_id:
+                    room_id = room_id.upper()
+                    counts[room_id] = counts.get(room_id, 0) + 1
+        return [
+            {**room, "member_count": counts.get(room["id"].upper(), 0)}
+            for room in rooms
+        ]
+
+    def broadcast_room_directory(self) -> None:
+        message = {"type": "room_list", "rooms": self.room_directory()}
+        with self.lock:
+            recipients = list(self.clients)
+        for conn in recipients:
+            try:
+                self.send(conn, message)
+            except OSError:
+                self.remove_client(conn)
+
     def start(self) -> None:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -121,12 +145,11 @@ class ChatServer:
                             if self.auth.login(name, password):
                                 username = name
                                 authenticated = True
-                                room = "general"
 
                                 with self.lock:
                                     self.clients[conn] = {
                                         "username": username,
-                                        "room": room,
+                                        "room": "",
                                     }
 
                                 self.send(
@@ -135,27 +158,11 @@ class ChatServer:
                                         "type": "auth",
                                         "success": True,
                                         "username": username,
-                                        "room": room,
                                         "text": "Login successful.",
                                     },
                                 )
 
-                                self.send(
-                                    conn,
-                                    {
-                                        "type": "history",
-                                        "messages": self.database.get_messages(room),
-                                    },
-                                )
-
-                                self.broadcast(
-                                    room,
-                                    {
-                                        "type": "system",
-                                        "text": f"{username} joined the chat.",
-                                        "time": self.timestamp(),
-                                    },
-                                )
+                                self.broadcast_room_directory()
                                 break
                             else:
                                 self.send(
@@ -192,63 +199,109 @@ class ChatServer:
                 for message in messages:
                     action = message.get("type")
 
-                    if action == "create_room":
-                        room = str(message.get("room", "")).strip().lower()
+                    if action == "list_rooms":
+                        self.send(
+                            conn,
+                            {"type": "room_list", "rooms": self.room_directory()},
+                        )
 
-                        if not room or len(room) > 64:
+                    elif action == "create_room":
+                        room_name = str(message.get("room", "")).strip()
+
+                        if not room_name or len(room_name) > 64:
                             self.send(
                                 conn,
-                                {
-                                    "type": "error",
-                                    "text": "Room name must be 1–64 characters.",
-                                },
+                                {"type": "error", "text": "Room name must be 1–64 characters."},
                             )
                             continue
 
-                        if not all(c.isalnum() or c in "-_" for c in room):
+                        is_public = message.get("is_public", True)
+                        if not isinstance(is_public, bool):
                             self.send(
                                 conn,
-                                {
-                                    "type": "error",
-                                    "text": "Use letters, numbers, hyphens or underscores.",
-                                },
+                                {"type": "error", "text": "Choose public or private room access."},
                             )
+                            continue
+
+                        try:
+                            created = self.database.create_room(
+                                room_name, username, is_public=is_public
+                            )
+                        except ValueError as exc:
+                            self.send(conn, {"type": "error", "text": str(exc)})
                             continue
 
                         self.send(
                             conn,
                             {
                                 "type": "room_created",
-                                "room": room,
-                                "text": f"Room #{room} is ready to join.",
+                                "room": created["id"],
+                                "room_name": created["name"],
+                                "is_public": created["is_public"],
+                                "text": (
+                                    f"{created['name']} is now public. Choose it to join."
+                                    if created["is_public"]
+                                    else f"{created['name']} is private. Share invite code {created['id']} to let others join."
+                                ),
                             },
                         )
+                        self.broadcast_room_directory()
+
+                    elif action == "delete_room":
+                        room_id = str(message.get("room", "")).strip()
+                        try:
+                            deleted = self.database.delete_public_room(room_id, username)
+                        except ValueError as exc:
+                            self.send(conn, {"type": "error", "text": str(exc)})
+                            continue
+
+                        with self.lock:
+                            members = [
+                                member
+                                for member, info in self.clients.items()
+                                if info.get("room", "").upper() == deleted["id"]
+                            ]
+                            for member in members:
+                                self.clients[member]["room"] = ""
+
+                        notice = {
+                            "type": "room_deleted",
+                            "room": deleted["id"],
+                            "room_name": deleted["name"],
+                            "text": f"{deleted['name']} was deleted by its creator.",
+                        }
+                        recipients = set(members)
+                        recipients.add(conn)
+                        for recipient in recipients:
+                            try:
+                                self.send(recipient, notice)
+                            except OSError:
+                                self.remove_client(recipient)
+                        self.broadcast_room_directory()
 
                     elif action == "join_room":
-                        room = str(message.get("room", "")).strip().lower()
-
-                        if (
-                            not room
-                            or len(room) > 64
-                            or not all(c.isalnum() or c in "-_" for c in room)
+                        requested_room = str(message.get("room", "")).strip()
+                        room_record = self.database.find_room(requested_room)
+                        if not room_record or (
+                            not room_record["is_public"]
+                            and requested_room.upper() != room_record["id"]
                         ):
                             self.send(
                                 conn,
-                                {
-                                    "type": "error",
-                                    "text": "Invalid room name.",
-                                },
+                                {"type": "error", "text": "Public room or valid private invite code not found."},
                             )
                             continue
 
+                        room = room_record["id"]
                         with self.lock:
                             old_info = self.clients.get(conn)
                             if not old_info:
                                 continue
-                            old_room = old_info["room"]
+                            old_room = old_info.get("room", "")
                             self.clients[conn]["room"] = room
 
-                        if old_room != room:
+                        switched_room = old_room.upper() != room.upper() if old_room else True
+                        if old_room and switched_room:
                             self.broadcast(
                                 old_room,
                                 {
@@ -263,7 +316,9 @@ class ChatServer:
                             {
                                 "type": "room_joined",
                                 "room": room,
-                                "text": f"Joined #{room}.",
+                                "room_name": room_record["name"],
+                                "is_public": bool(room_record["is_public"]),
+                                "text": f"Joined {room_record['name']}.",
                             },
                         )
                         self.send(
@@ -274,14 +329,16 @@ class ChatServer:
                                 "messages": self.database.get_messages(room),
                             },
                         )
-                        self.broadcast(
-                            room,
-                            {
-                                "type": "system",
-                                "text": f"{username} joined the room.",
-                                "time": self.timestamp(),
-                            },
-                        )
+                        if switched_room:
+                            self.broadcast(
+                                room,
+                                {
+                                    "type": "system",
+                                    "text": f"{username} joined {room_record['name']}.",
+                                    "time": self.timestamp(),
+                                },
+                            )
+                        self.broadcast_room_directory()
 
                     elif action == "chat":
                         content = str(message.get("text", "")).strip()
@@ -332,14 +389,17 @@ class ChatServer:
             pass
 
         if info:
-            self.broadcast(
-                info["room"],
-                {
-                    "type": "system",
-                    "text": f"{info['username']} left the chat.",
-                    "time": self.timestamp(),
-                },
-            )
+            room = info.get("room", "")
+            if room:
+                self.broadcast(
+                    room,
+                    {
+                        "type": "system",
+                        "text": f"{info['username']} left the chat.",
+                        "time": self.timestamp(),
+                    },
+                )
+            self.broadcast_room_directory()
 
     def stop(self) -> None:
         self.running = False

@@ -63,13 +63,20 @@ class ChatClient:
             }
         )
 
-    def create_room(self, room: str):
+    def list_rooms(self):
+        self._send({"type": "list_rooms"})
+
+    def create_room(self, room: str, is_public: bool = True):
         self._send(
             {
                 "type": "create_room",
                 "room": room.strip(),
+                "is_public": is_public,
             }
         )
+
+    def delete_room(self, room_id: str):
+        self._send({"type": "delete_room", "room": room_id.strip()})
 
     def join_room(self, room: str):
         self._send(
