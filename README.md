@@ -1,28 +1,45 @@
-# Oasis Infobyte — Python Programming Internship
+# Oasis Infobyte Python Projects
 
-This repository contains projects developed as part of the Oasis Infobyte Python Programming Internship.
+This repository contains completed projects developed for the Oasis Infobyte Python Programming Internship (OIBSIP). Each project is self-contained and has its own dependencies, setup instructions, and tests.
 
 ## Projects
 
-| Task | Project | Status |
-|---|---|---|
-| Task 1 | Voice Assistant | Planned |
-| Task 4 | Weather Application | Planned |
-| Task 5 | Chat Application | In Progress |
+| Internship task | Project | Description | Status |
+|---|---|---|---|
+| Task 1 | [Python Voice Assistant](Python-Task1-VoiceAssistant/README.md) | Voice and text assistant with reminders, weather, web search, email, and optional Gemini answers. | Complete |
+| Task 4 | [Atmos Weather](Python-Task4-BasicWeatherApp/README.md) | PyQt5 desktop weather app with current conditions and short-term and five-day forecasts. | Complete |
+| Task 5 | [Relay Chat](Python-Task5-ChatApplication/README.md) | GTK4/libadwaita desktop chat with accounts, public rooms, and invite-only private rooms. | Complete |
 
-## Technologies
+## Quick start
 
-- **Language:** Python
-- **GUI:** Tkinter
-- **Networking:** Python Sockets
-- **Concurrency:** Threading
-- **Database:** SQLite
-- **APIs:** OpenWeatherMap
+Choose a project folder and follow its README. Each project manages dependencies independently with [uv](https://docs.astral.sh/uv/).
 
-## Repository Structure
+For example, to start Atmos:
 
-Each task has its own directory containing the implementation, documentation, and related resources.
+```bash
+cd Python-Task4-BasicWeatherApp
+uv sync
+# Add OPENWEATHERMAP_API_KEY to your environment, then:
+uv run python src/main.py
+```
 
-## Development
+The Voice Assistant and Atmos need optional service credentials for some features. Relay requires a Linux desktop with GTK4, libadwaita, and PyGObject. Their READMEs explain the full setup and privacy details.
 
-Projects will be implemented incrementally, with an emphasis on functionality, maintainable code, and testing.
+## Repository layout
+
+```text
+OIBSIP/
+├── Python-Task1-VoiceAssistant/
+├── Python-Task4-BasicWeatherApp/
+└── Python-Task5-ChatApplication/
+```
+
+## Tests
+
+Run tests from the project folder being checked:
+
+```bash
+uv run pytest
+```
+
+Relay's README also provides its test command and environment notes.

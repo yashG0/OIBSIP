@@ -1,30 +1,30 @@
 # Python Voice Assistant
 
-A command assistant with voice and text modes. It can answer everyday questions, search the web, check live weather, set spoken reminders, send confirmed emails, and open user-configured shortcuts.
+A Python desktop assistant with voice and text modes. Ask common questions, search the web, check the weather, set reminders, send confirmed emails, or open configured website shortcuts.
 
 ## Features
 
-- Microphone input using SpeechRecognition, with ambient-noise calibration
-- Spoken responses using pyttsx3; reminder notifications are spoken as well
-- Text mode when microphone access or online speech recognition is unavailable
-- Greeting, time, and date intents
-- Flexible phrase parsing with NLTK stemming for common word variations
+- Voice input through SpeechRecognition with ambient-noise calibration
+- Spoken responses through pyttsx3, using a feminine English voice variant when the local speech engine supports it
+- Text mode if no microphone is available or speech recognition cannot connect
+- Natural-language commands for greetings, date, and time
+- Flexible phrase matching with NLTK stemming
 - Web searches opened in the default browser
-- Weather lookup by city using OpenWeatherMap
-- Timed reminders for seconds, minutes, or hours
-- Email sending through SMTP with a read-back and explicit yes/no confirmation
-- Offline question answers from the editable `config/knowledge.json`, with optional Gemini answers for questions not covered locally
-- Website shortcuts configured in `config/commands.json`
+- Current weather by city using OpenWeatherMap
+- Timed reminders, including spoken notifications
+- Email through SMTP after the assistant reads back the recipient and subject and receives explicit confirmation
+- Local question answers from config/knowledge.json, with optional Gemini answers for unmatched questions
+- Website shortcuts maintained in config/commands.json
 
 ## Requirements
 
-- Python 3.15 or newer, as configured in `pyproject.toml`
-- `uv` to install the project dependencies
-- A microphone and speakers/headphones for voice mode
-- Internet access for voice transcription, web searches, and enabled API integrations
-- Optional OpenWeatherMap and Gemini API keys, plus SMTP settings for email
+- Python 3.15 or newer, as configured in pyproject.toml
+- [uv](https://docs.astral.sh/uv/) for dependency management
+- Microphone and speakers or headphones for voice mode
+- Internet for speech transcription, web search, and enabled API integrations
+- Optional OpenWeatherMap and Gemini API keys; SMTP settings are needed only for email
 
-On Linux, PyAudio may require the system PortAudio development libraries before it can be installed.
+On Linux, PyAudio may require PortAudio development libraries.
 
 ## Setup
 
@@ -34,7 +34,7 @@ From this project folder, install dependencies:
 uv sync
 ```
 
-Copy `.env.example` to `.env` and fill in the services you plan to use:
+Copy .env.example to .env and add credentials for the features you want:
 
 ```env
 OPENWEATHERMAP_API_KEY=your_openweathermap_key
@@ -47,45 +47,40 @@ SMTP_PASSWORD=your_smtp_or_app_password
 SMTP_FROM=your_email@example.com
 ```
 
-Weather, Gemini, and email credentials are optional unless you use those features. `.env` is ignored by Git; never commit real credentials.
+All keys and mail settings are optional until you use the corresponding feature. .env is ignored by Git; never commit real credentials.
 
-## Start the assistant
+## Run
 
 ```bash
 uv run python src/main.py
 ```
 
-Choose **voice** or **text** mode at startup. If the microphone is unavailable or speech recognition cannot connect, the assistant switches to text mode.
+Choose voice or text mode at startup. Voice mode needs a working microphone and an internet connection for Google speech transcription. If either is unavailable, the assistant falls back to text mode.
 
 ## Example commands
 
-- `Hello`
-- `Could you tell me the current time?`
-- `What's today's date?`
-- `Search the web for beginner Python projects`
-- `What's the weather like in Nagpur?`
-- `Remind me to stretch in 10 minutes`
-- `What is the largest planet?`
-- `What is the capital of India?`
-- `Send email to name@example.com subject Project update body The demo is ready`
-- `Open GitHub`
+- Hello
+- What time is it?
+- What's today's date?
+- Search the web for beginner Python projects
+- What's the weather like in Nagpur?
+- Remind me to stretch in 10 minutes
+- What is the largest planet?
+- Send email to name@example.com subject Project update body The demo is ready
+- Open GitHub
 
-For email, the assistant repeats the recipient and subject first. Say **yes** to send or **no** to cancel. You can also say an address as “name at example dot com.”
+The assistant asks for explicit confirmation before sending an email. You can add website shortcuts in config/commands.json and local facts in config/knowledge.json. Gemini is used for general questions only when no local answer matches and GEMINI_API_KEY is configured.
 
-Add website shortcuts to `config/commands.json`. Add local fact aliases and answers to `config/knowledge.json`; those are answered locally first. If no local fact matches, the assistant uses Gemini when `GEMINI_API_KEY` is configured.
-
-## Run the existing checks
+## Tests
 
 ```bash
 uv run pytest
 ```
 
-## Privacy and data handling
+## Privacy
 
-- In voice mode, recorded audio is sent to Google's speech recognition service through SpeechRecognition for transcription. Text mode does not send audio.
-- Web search terms are placed in a Google Search URL and opened in your default browser.
-- Weather queries send the requested city and API key to OpenWeatherMap.
-- General questions not answered by the local knowledge file are sent to the configured Gemini model. The app requests stateless interactions (`store=False`), but Google’s unpaid API terms may still allow submitted content to be used to improve its services. Do not ask Gemini questions containing sensitive or confidential information.
-- An email is sent only after explicit confirmation, through the SMTP server configured in `.env`.
-- NLTK stemming and local knowledge matching run on the device; no language corpus is downloaded. Local answers do not require a Gemini request.
-- Reminder timers exist only while the assistant is running. The application does not save a command history.
+- Voice transcription sends recorded audio to Google's speech recognition service. Text mode does not send audio.
+- Weather lookups send the requested city and API key to OpenWeatherMap.
+- Unmatched general questions are sent to the configured Gemini model. The app requests stateless interactions, but avoid sending sensitive or confidential information.
+- Email is sent through the SMTP server in .env only after explicit confirmation.
+- Spoken output uses the local speech engine. Reminders exist only while the assistant is running; the app does not save command history.
