@@ -1,0 +1,29 @@
+{
+  "facts": [
+    {"aliases": ["capital of India", "India capital"], "answer": "The capital of India is New Delhi."},
+    {"aliases": ["capital of France", "France capital"], "answer": "The capital of France is Paris."},
+    {"aliases": ["capital of Japan", "Japan capital"], "answer": "The capital of Japan is Tokyo."},
+    {"aliases": ["capital of the United States", "capital of the USA", "US capital"], "answer": "The capital of the United States is Washington, D.C."},
+    {"aliases": ["capital of the United Kingdom", "UK capital"], "answer": "The capital of the United Kingdom is London."},
+    {"aliases": ["largest planet", "biggest planet"], "answer": "Jupiter is the largest planet in our solar system."},
+    {"aliases": ["red planet", "planet Mars"], "answer": "Mars is called the Red Planet because iron minerals in its soil give it a reddish color."},
+    {"aliases": ["planet with rings", "Saturn rings"], "answer": "Saturn is best known for its bright rings, which are made mostly of ice and rocky particles."},
+    {"aliases": ["nearest star", "closest star to Earth"], "answer": "The Sun is the star closest to Earth."},
+    {"aliases": ["what is the Sun", "Sun star"], "answer": "The Sun is the star at the center of our solar system. Earth and the other planets orbit it."},
+    {"aliases": ["Earth natural satellite", "moon of Earth"], "answer": "The Moon is Earth's only natural satellite."},
+    {"aliases": ["boiling point of water", "water boils"], "answer": "At standard atmospheric pressure, water boils at 100 degrees Celsius."},
+    {"aliases": ["chemical formula of water", "water formula"], "answer": "Water's chemical formula is H2O: each molecule has two hydrogen atoms and one oxygen atom."},
+    {"aliases": ["photosynthesis", "what is photosynthesis"], "answer": "Photosynthesis is the process plants use to convert light energy, water, and carbon dioxide into sugars and oxygen."},
+    {"aliases": ["gravity", "what is gravity"], "answer": "Gravity is the attraction between objects with mass. Earth's gravity keeps us and the atmosphere on the planet."},
+    {"aliases": ["what is Python", "Python programming language"], "answer": "Python is a general-purpose programming language known for readable syntax and a large ecosystem of libraries."},
+    {"aliases": ["who created Python", "Python creator"], "answer": "Python was created by Guido van Rossum and first released in 1991."},
+    {"aliases": ["what is HTML", "HTML meaning"], "answer": "HTML is the markup language used to structure content on web pages."},
+    {"aliases": ["what is CPU", "CPU meaning"], "answer": "A CPU, or central processing unit, executes instructions and coordinates many of a computer's operations."},
+    {"aliases": ["what is HTTP", "HTTP meaning"], "answer": "HTTP is the protocol browsers and servers use to exchange web requests and responses."},
+    {"aliases": ["what is AI", "artificial intelligence"], "answer": "Artificial intelligence is a broad field focused on computer systems that perform tasks such as perception, prediction, and language processing."},
+    {"aliases": ["how many continents", "number of continents"], "answer": "A common model counts seven continents: Africa, Antarctica, Asia, Europe, North America, Oceania, and South America."},
+    {"aliases": ["how many planets", "number of planets"], "answer": "There are eight recognized planets in our solar system."},
+    {"aliases": ["speed of light", "light speed"], "answer": "In a vacuum, light travels at about 299,792 kilometers per second."},
+    {"aliases": ["who are you", "your name"], "answer": "I'm your local voice assistant. I can tell you the time and date, search the web, check weather, set reminders, and answer facts from my knowledge file."}
+  ]
+}
