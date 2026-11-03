@@ -666,8 +666,10 @@ class ChatApplication(Adw.Application):
         private_section.append(self.invite_slot)
 
         scroller = Gtk.ScrolledWindow()
-        scroller.set_vexpand(True)
-        scroller.set_min_content_height(240)
+        scroller.set_vexpand(False)
+        scroller.set_min_content_height(72)
+        scroller.set_max_content_height(320)
+        scroller.set_propagate_natural_height(True)
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.set_child(self.rooms_container)
 

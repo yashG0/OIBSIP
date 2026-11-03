@@ -82,7 +82,7 @@ class ChatDatabase:
                     """,
                     (username, password_hash, self._now()),
                 )
-                return int(cursor.lastrowid)
+                return int(cursor.lastrowid)  # type:ignore
         except sqlite3.IntegrityError as exc:
             raise ValueError("Username is already registered.") from exc
 
@@ -94,9 +94,7 @@ class ChatDatabase:
             ).fetchone()
             return dict(row) if row else None
 
-    def create_room(
-        self, name: str, created_by: str, is_public: bool = True
-    ) -> dict:
+    def create_room(self, name: str, created_by: str, is_public: bool = True) -> dict:
         name = name.strip()
         if not name or len(name) > 64:
             raise ValueError("Room name must be 1–64 characters.")
